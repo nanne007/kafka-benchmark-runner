@@ -1,0 +1,118 @@
+== Kafka Benchmark
+
+=== 目的
+
+消息大小在 100K 至 1M 区间内，测试 Kafka 的写性能，
+以确认其是否可以支撑 __每天千万级的消息(百K大小)写入__ 需求。
+
+=== Kafka 测试环境
+
+
+==== 硬件配置
+
+公司内部虚拟机三台，规格如下:
+
+- CPU: 1 core, 2400MHz
+- Memory: 2G
+- disk: 500G raid
+
+三台机器以及测试请求客户机均是内网连接，带宽不是限制条件。
+
+==== 软件配置
+
+Kafka 版本： 0.10.1.0
+
+Kafka broker 配置：
+
+在默认的设置基础上，修改了如下参数：
+
+- message.max.bytes: 1000012 => 5242880
+- socket.receive.buffer.bytes: 102400 => 1048576
+- socket.send.buffer.bytes: 102400 => 1048576
+- num.network.threads: 3 => 4
+
+
+=== Topic 设置
+
+
+==== 3 Replication, 6 partition
+
+[source, bash, numbered]
+....
+bin/kafka-topics.sh --create --zookeeper localhost:2181/kafka-test \
+ --replication-factor 3  --partitions 6 --topic three-replication
+....
+
+image::three-replication-info.png[三副本的Topic信息]
+
+'''
+
+=== 测试命令
+
+* 使用 kafka 自带的 `bin/kafka-producer-perf-test.sh`，主要参数：
+
+** num-records: 总共发送的消息个数
+** record-size: 消息大小（byte）
+** throughput: 最大的吞吐量 messages/sec，用来限制测试的吞吐量
+** producer-props: Producer 的配置（本次的 Benchmark 均使用默认的设置）
+
+
+
+=== 测试结果, ACK=1(leader received)
+
+[source, bash, numbered]
+....
+for i in 100, 1000, 10000, 100000, 500000, 1024000;
+do
+    echo "-------------------$i---------------------";
+    bin/kafka-producer-perf-test.sh --topic three-replication \
+    --num-records $((10485760000/$i)) \
+    --record-size $i \
+    --throughput $((10485760000/$i)) \
+    --producer-props bootstrap.servers=10.0.9.131:9092;
+done;
+....
+
+
+
+[format="csv", options="header"]
+.100B, 1KB, 10KB, 100KB, 500KB, 1MB 消息大小时的结果
+|===
+消息大小,records/sec, MB/sec, 平均延迟, 最大延迟, 50%, 95%, 99%, 99.9%
+100B, 649100.239565, 61.90, 380.20 ms, 2293.00 ms, 47 ms, 1223 ms, 1447 ms, 2220 ms
+100B, 599796.364302, 57.20, 13.04 ms, 467.00 ms, 3 ms, 45 ms, 200 ms, 397 ms
+100B, 549948.601758, 52.45, 7.51 ms, 215.00 ms, 3 ms, 30 ms, 63 ms, 149 ms
+
+1KB, 86275.568135, 82.28, 352.86 ms , 1424.00 ms, 28 ms, 1154 ms, 1257 ms, 1396 ms
+1KB, 74996.853007, 71.52, 13.17 ms , 1169.00 ms, 3 ms, 37 ms, 208 ms, 1031 ms
+1KB, 64997.334590, 61.99, 5.42 ms, 592.00 ms, 2 ms, 15 ms, 49 ms, 490 ms
+
+10KB, 8445.428845, 80.54, 241.57 ms, 1291.00 ms, 26 ms, 789 ms, 853 ms, 1224 ms
+10KB, 6998.718496, 66.74, 34.39 ms, 2088.00 ms, 3 ms, 207 ms, 516 ms, 1986 ms
+10KB, 5999.885561, 57.22, 3.53 ms, 290.00 ms, 2 ms, 10 ms, 30 ms, 146 ms
+
+100KB, 841.798929, 80.28, 397.22 ms , 1657.00 ms, 25 ms, 1266 ms, 1419 ms, 1597 ms
+100KB, 799.839811, 76.28, 19.71 ms , 297.00 ms, 6 ms, 92 ms, 228 ms, 273 ms
+100KB, 699.919899, 66.75, 11.70 ms , 342.00 ms, 5 ms, 28 ms, 209 ms, 325 ms
+100KB, 499.976159, 47.68, 5.57 ms , 406.00 ms, 3 ms, 7 ms, 81 ms, 324 ms
+100KB, 299.992847, 28.61, 3.41 ms , 168.00 ms, 3 ms, 5 ms, 16 ms, 41 ms
+
+500KB, 182.272518, 86.91, 370.40 ms , 2081.00 ms, 60 ms, 1161 ms, 1303 ms, 1885 ms
+500KB, 164.964836, 78.66, 38.00 ms , 272.00 ms, 21 ms, 139 ms, 226 ms, 261 ms
+500KB, 149.974253, 71.51, 22.91 ms , 219.00 ms, 18 ms, 50 ms, 113 ms, 200 ms
+500KB, 139.990521, 66.75, 19.25 ms , 284.00 ms, 17 ms, 33 ms, 59 ms, 176 ms
+500KB, 119.991303, 57.22, 17.01 ms , 229.00 ms, 15 ms, 29 ms, 46 ms, 149 ms
+500KB, 99.999167, 47.68, 15.48 ms , 584.00 ms, 12 ms, 28 ms, 52 ms, 430 ms
+
+1MB, 86.975725, 84.94, 374.57 ms , 2287.00 ms, 69 ms, 1562 ms, 1776 ms, 2235 ms
+1MB, 69.983598, 68.34, 47.43 ms , 432.00 ms, 38 ms, 97 ms, 232 ms, 406 ms
+1MB, 59.989338, 58.58, 37.92 ms , 905.00 ms, 32 ms, 63 ms, 143 ms, 628 ms
+1MB, 50.000977, 48.83, 28.27 ms , 308.00 ms, 24 ms, 50 ms, 91 ms, 193 ms
+|===
+
+
+大致可以得到：
+
+100B, 1KB, 10KB, 100KB, 500KB, 1MB 消息大小时，在保证平均几十 ms的延迟下，
+吞吐量分别在 60w, 7.5w, 7500, 800, 170, 75 records/sec 左右。
+

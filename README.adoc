@@ -1,21 +1,21 @@
-# kafka-benchmark-runner #
+== kafka benchmark runner
 
-### Setup a zookeeper with webui quickly using docker ###
+=== Setup a zookeeper with webui quickly using docker
 
-```
+....
 $ docker-compose up -d
 $ docker-compose ps
-```
+....
 
-### Create kafka cluster ###
+=== Create kafka cluster
 
 3 machines:
 
 - CPU: 1 core, 2400MHz
 - Memory: 2G
 - disk: 500G raid
-```
 
+....
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -135,52 +135,49 @@ zookeeper.connect=10.1.6.25:2181/kafka-test
 
 # Timeout in ms for connecting to zookeeper
 zookeeper.connection.timeout.ms=60000
-```
+....
 
 
-### Producer Performance Test ###
+=== Producer Performance Test
 
 
 
-#### 3 Replication, 6 partitions ####
+==== 3 Replication, 6 partitions
 
 Topic:
 
-    bin/kafka-topics.sh --create --zookeeper localhost:2181/kafka-test --replication-factor 3  --partitions 6 --topic three-replication
+`bin/kafka-topics.sh --create --zookeeper localhost:2181/kafka-test --replication-factor 3  --partitions 6 --topic three-replication`
 
 Ack: 1
 
+~ 100kB message
 
-~100kB message
-
-``` bash
+....
 bin/kafka-producer-perf-test.sh --topic three-replication --num-records $((10485760000/100000)) --record-size 100000 --throughput $((10485760000/100000)) --producer-props bootstrap.servers=10.0.9.131:9092
-```
+....
 
-==>
+=>
 
-
-```
+....
  841.798929 records/sec (80.28 MB/sec), 397.22 ms avg latency, 1657.00 ms max latency, 25 ms 50th, 1266 ms 95th, 1419 ms 99th, 1597 ms 99.9th.
  799.839811 records/sec (76.28 MB/sec), 19.71 ms avg latency, 297.00 ms max latency, 6 ms 50th, 92 ms 95th, 228 ms 99th, 273 ms 99.9th.
  699.919899 records/sec (66.75 MB/sec), 11.70 ms avg latency, 342.00 ms max latency, 5 ms 50th, 28 ms 95th, 209 ms 99th, 325 ms 99.9th.
  499.976159 records/sec (47.68 MB/sec), 5.57 ms avg latency, 406.00 ms max latency, 3 ms 50th, 7 ms 95th, 81 ms 99th, 324 ms 99.9th.
  299.992847 records/sec (28.61 MB/sec), 3.41 ms avg latency, 168.00 ms max latency, 3 ms 50th, 5 ms 95th, 16 ms 99th, 41 ms 99.9th
-```
+....
 
 
 ~500kB message
 
 
-``` bash
+....
 bin/kafka-producer-perf-test.sh --topic three-replication --num-records $((10485760000/500000)) --record-size 500000 --throughput $((10485760000/500000)) --producer-props bootstrap.servers=10.0.9.131:9092
-```
+....
 
-==>
+=>
 
-``` bash
+....
  182.272518 records/sec (86.91 MB/sec), 370.40 ms avg latency, 2081.00 ms max latency, 60 ms 50th, 1161 ms 95th, 1303 ms 99th, 1885 ms 99.9th.
  164.964836 records/sec (78.66 MB/sec), 38.00 ms avg latency, 272.00 ms max latency, 21 ms 50th, 139 ms 95th, 226 ms 99th, 261 ms 99.9th
  149.974253 records/sec (71.51 MB/sec), 22.91 ms avg latency, 219.00 ms max latency, 18 ms 50th, 50 ms 95th, 113 ms 99th, 200 ms 99.9th.
-
-```
+....
